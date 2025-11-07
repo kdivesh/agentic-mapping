@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
@@ -15,45 +15,167 @@ export default function App(){
   const [xsdFiles, setXsdFiles] = useState([])
   const [sourceFile, setSourceFile] = useState(null)
   const [projectName, setProjectName] = useState("mapping-output")
-  const [progress, setProgress] = useState(0)
   const [selectedRow, setSelectedRow] = useState(null)
 
   const [review, setReview] = useState(null)
   const [edits, setEdits] = useState({})
 
-  function resetReview() { setReview(null); setEdits({}); setProgress(0); setScreen(1); }
+  const [aiProgress, setAiProgress] = useState({
+    stage: 'idle',
+    percentage: 0,
+    currentAgent: '',
+    message: '',
+    details: []
+  })
+
+  function resetReview() {
+    setReview(null);
+    setEdits({});
+    setScreen(1);
+    setAiProgress({
+      stage: 'idle',
+      percentage: 0,
+      currentAgent: '',
+      message: '',
+      details: []
+    });
+  }
 
   async function handlePreviewSubmit(){
-    setProgress(25)
+    setScreen(2)
+
     const form = new FormData()
     xsdFiles.forEach(f => form.append("xsd_files", f))
     if (sourceFile) form.append("source_file", sourceFile)
     form.append("project_name", projectName || "mapping-output")
 
-    setProgress(50)
-    setTimeout(() => setProgress(75), 500)
-    setTimeout(() => setProgress(95), 1000)
+    simulateAIProgress()
 
-    const r = await fetch(`${API_BASE}/api/map/preview`, { method:"POST", body:form })
-    if(!r.ok){ const t = await r.text(); throw new Error(t) }
-    const data = await r.json()
-    setReview(data)
-    setProgress(100)
-    setScreen(2)
+    try {
+      const r = await fetch(`${API_BASE}/api/map/preview`, { method:"POST", body:form })
+      if(!r.ok){ const t = await r.text(); throw new Error(t) }
+      const data = await r.json()
+      setReview(data)
+
+      setAiProgress({
+        stage: 'complete',
+        percentage: 100,
+        currentAgent: 'Review Agent',
+        message: 'Mapping complete and ready for review',
+        details: [
+          { agent: 'File Parser', status: 'complete', message: 'Files processed successfully' },
+          { agent: 'Schema Analyzer', status: 'complete', message: 'Schema structure analyzed' },
+          { agent: 'Semantic Matcher', status: 'complete', message: `${data.mappings?.length || 0} mappings generated` },
+          { agent: 'Confidence Calculator', status: 'complete', message: 'Confidence scores computed' },
+          { agent: 'Review Agent', status: 'complete', message: 'Ready for human review' }
+        ]
+      })
+    } catch (error) {
+      setAiProgress({
+        stage: 'error',
+        percentage: 0,
+        currentAgent: '',
+        message: 'Error during mapping process',
+        details: [{ agent: 'System', status: 'error', message: error.message }]
+      })
+    }
+  }
+
+  function simulateAIProgress() {
+    const stages = [
+      { percentage: 15, agent: 'File Parser', message: 'Parsing uploaded files...', delay: 500 },
+      { percentage: 30, agent: 'Schema Analyzer', message: 'Analyzing target schema structure...', delay: 1000 },
+      { percentage: 50, agent: 'Data Profiler', message: 'Profiling source data patterns...', delay: 1500 },
+      { percentage: 70, agent: 'Semantic Matcher', message: 'Matching fields using AI models...', delay: 2000 },
+      { percentage: 85, agent: 'Confidence Calculator', message: 'Computing confidence scores...', delay: 2500 },
+      { percentage: 95, agent: 'Review Agent', message: 'Preparing review interface...', delay: 3000 }
+    ]
+
+    stages.forEach(stage => {
+      setTimeout(() => {
+        setAiProgress(prev => ({
+          ...prev,
+          stage: 'processing',
+          percentage: stage.percentage,
+          currentAgent: stage.agent,
+          message: stage.message,
+          details: [
+            ...prev.details.filter(d => d.agent !== stage.agent),
+            { agent: stage.agent, status: 'active', message: stage.message }
+          ]
+        }))
+      }, stage.delay)
+    })
   }
 
   async function handleFinalize(){
     if(!review?.jobId) return
+
+    setAiProgress({
+      stage: 'finalizing',
+      percentage: 0,
+      currentAgent: 'Report Generator',
+      message: 'Generating comprehensive reports...',
+      details: [
+        { agent: 'Report Generator', status: 'active', message: 'Compiling mapping documentation...' }
+      ]
+    })
+
+    setTimeout(() => {
+      setAiProgress(prev => ({
+        ...prev,
+        percentage: 50,
+        message: 'Creating transformation scripts...',
+        details: [
+          { agent: 'Report Generator', status: 'complete', message: 'Documentation compiled' },
+          { agent: 'Script Generator', status: 'active', message: 'Generating transformation code...' }
+        ]
+      }))
+    }, 500)
+
     const payload = {
       jobId: review.jobId,
       edits: Object.entries(edits).map(([SourceField, TargetPath])=>({ SourceField, TargetPath }))
     }
-    const r = await fetch(`${API_BASE}/api/map/finalize`, {
-      method:"POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payload)
-    })
-    if(!r.ok){ const t = await r.text(); throw new Error(t) }
-    const blob = await r.blob()
-    downloadBlob(blob, `${projectName||"mapping-output"}.zip`)
+
+    try {
+      const r = await fetch(`${API_BASE}/api/map/finalize`, {
+        method:"POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      })
+
+      if(!r.ok){ const t = await r.text(); throw new Error(t) }
+
+      const blob = await r.blob()
+
+      setAiProgress({
+        stage: 'complete',
+        percentage: 100,
+        currentAgent: 'Download Manager',
+        message: 'Reports generated successfully!',
+        details: [
+          { agent: 'Report Generator', status: 'complete', message: 'Documentation compiled' },
+          { agent: 'Script Generator', status: 'complete', message: 'Transformation code generated' },
+          { agent: 'Validator', status: 'complete', message: 'Output validated' },
+          { agent: 'Package Builder', status: 'complete', message: 'Archive created' },
+          { agent: 'Download Manager', status: 'complete', message: 'Ready to download' }
+        ]
+      })
+
+      setTimeout(() => {
+        downloadBlob(blob, `${projectName||"mapping-output"}.zip`)
+      }, 500)
+
+    } catch (error) {
+      setAiProgress({
+        stage: 'error',
+        percentage: 0,
+        currentAgent: '',
+        message: 'Error generating reports',
+        details: [{ agent: 'System', status: 'error', message: error.message }]
+      })
+    }
   }
 
   const handleRowSelect = (mapping) => {
@@ -83,7 +205,7 @@ export default function App(){
           <Screen2
             xsdFiles={xsdFiles}
             sourceFile={sourceFile}
-            progress={progress}
+            aiProgress={aiProgress}
             review={review}
             edits={edits}
             setEdits={setEdits}
@@ -185,67 +307,148 @@ function Screen1({ xsdFiles, setXsdFiles, sourceFile, setSourceFile, handlePrevi
   )
 }
 
-function Screen2({ xsdFiles, sourceFile, progress, review, edits, setEdits, selectedRow, handleRowSelect, handleAcceptMapping, handleFinalize }) {
+function AIProgressPanel({ xsdFiles, sourceFile, aiProgress }) {
+  const getStageStatus = (stageName) => {
+    const detail = aiProgress.details.find(d => d.agent === stageName)
+    if (!detail) return 'pending'
+    return detail.status
+  }
+
+  const stages = [
+    { name: 'File Parser', label: 'Uploading Complete' },
+    { name: 'Schema Analyzer', label: 'Analyzing Source & Target' },
+    { name: 'Semantic Matcher', label: 'Mapping Fields' },
+    { name: 'Review Agent', label: 'Ready for Review' }
+  ]
+
+  return (
+    <aside className="w-[320px] shrink-0 border-r border-custom-gray-border bg-white flex flex-col p-4 space-y-4">
+      <h3 className="text-custom-gray-text text-lg font-bold leading-tight tracking-[-0.015em] px-2 pb-2 pt-2">Files &amp; Progress</h3>
+
+      <div className="flex flex-col space-y-4">
+        <div className="flex flex-col p-2">
+          <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-8">
+            <div className="flex max-w-[480px] flex-col items-center gap-2">
+              <p className="text-custom-gray-text text-base font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Upload Source Dataset</p>
+              <p className="text-gray-500 text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or click to browse.</p>
+              {sourceFile && <p className="text-sm text-custom-green-secondary truncate max-w-full">{sourceFile.name}</p>}
+            </div>
+            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-gray-100 hover:bg-gray-200 text-custom-gray-text text-sm font-bold leading-normal tracking-[0.015em]">
+              <span className="truncate">Upload File</span>
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col p-2">
+          <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-8">
+            <div className="flex max-w-[480px] flex-col items-center gap-2">
+              <p className="text-custom-gray-text text-base font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Upload Target Schema</p>
+              <p className="text-gray-500 text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or click to browse.</p>
+              {xsdFiles.length > 0 && <p className="text-sm text-custom-green-secondary">{xsdFiles.length} file(s)</p>}
+            </div>
+            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-gray-100 hover:bg-gray-200 text-custom-gray-text text-sm font-bold leading-normal tracking-[0.015em]">
+              <span className="truncate">Upload Schema</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col p-2 mt-4">
+        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-custom-gray-text">
+              {aiProgress.currentAgent || 'Processing'}
+            </span>
+            <span className="text-sm font-bold text-custom-green-secondary">
+              {aiProgress.percentage}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+            <div
+              className="bg-custom-green-cta h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${aiProgress.percentage}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-gray-600">{aiProgress.message}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col space-y-3 p-2">
+        {stages.map((stage, idx) => {
+          const status = getStageStatus(stage.name)
+          const isActive = aiProgress.currentAgent === stage.name
+          const isComplete = status === 'complete'
+          const isPending = status === 'pending'
+
+          return (
+            <div key={idx} className="flex items-center gap-3">
+              <div className={`flex items-center justify-center rounded-full shrink-0 size-8 transition-all ${
+                isComplete ? 'text-custom-green-cta bg-custom-green-cta/20' :
+                isActive ? 'text-custom-amber bg-custom-amber/20 animate-pulse' :
+                'text-gray-400 bg-gray-100'
+              }`}>
+                <span className={`material-symbols-outlined text-lg ${isActive ? 'animate-spin' : ''}`}>
+                  {isComplete ? 'check_circle' : isActive ? 'progress_activity' : 'circle'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium leading-normal truncate ${
+                  isComplete || isActive ? 'text-custom-gray-text' : 'text-gray-400'
+                }`}>
+                  {stage.label}
+                  {stage.name === 'Semantic Matcher' && isActive && ` (${aiProgress.percentage}%)`}
+                </p>
+                {isActive && (
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {aiProgress.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {aiProgress.stage === 'finalizing' && (
+        <div className="flex flex-col space-y-3 p-2 border-t border-custom-gray-border pt-4">
+          <h4 className="text-sm font-bold text-custom-gray-text px-2">Report Generation</h4>
+          {aiProgress.details.map((detail, idx) => (
+            <div key={idx} className="flex items-center gap-3">
+              <div className={`flex items-center justify-center rounded-full shrink-0 size-7 ${
+                detail.status === 'complete' ? 'text-custom-green-cta bg-custom-green-cta/20' :
+                detail.status === 'active' ? 'text-custom-amber bg-custom-amber/20' :
+                'text-gray-400 bg-gray-100'
+              }`}>
+                <span className={`material-symbols-outlined text-base ${detail.status === 'active' ? 'animate-spin' : ''}`}>
+                  {detail.status === 'complete' ? 'check_circle' : detail.status === 'active' ? 'progress_activity' : 'circle'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-medium truncate ${
+                  detail.status !== 'pending' ? 'text-custom-gray-text' : 'text-gray-400'
+                }`}>
+                  {detail.agent}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{detail.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </aside>
+  )
+}
+
+function Screen2({ xsdFiles, sourceFile, aiProgress, review, edits, setEdits, selectedRow, handleRowSelect, handleAcceptMapping, handleFinalize }) {
   const mappings = review?.mappings || []
   const currentMapping = selectedRow || (mappings.length > 0 ? mappings[0] : null)
 
   return (
     <>
-      <aside className="w-[320px] shrink-0 border-r border-custom-gray-border bg-white flex flex-col p-4 space-y-4">
-        <h3 className="text-custom-gray-text text-lg font-bold leading-tight tracking-[-0.015em] px-2 pb-2 pt-2">Files &amp; Progress</h3>
-        <div className="flex flex-col space-y-4">
-          <div className="flex flex-col p-2">
-            <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-8">
-              <div className="flex max-w-[480px] flex-col items-center gap-2">
-                <p className="text-custom-gray-text text-base font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Upload Source Dataset</p>
-                <p className="text-gray-500 text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or click to browse.</p>
-                {sourceFile && <p className="text-sm text-custom-green-secondary">{sourceFile.name}</p>}
-              </div>
-              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-gray-100 hover:bg-gray-200 text-custom-gray-text text-sm font-bold leading-normal tracking-[0.015em]">
-                <span className="truncate">Upload File</span>
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-col p-2">
-            <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-8">
-              <div className="flex max-w-[480px] flex-col items-center gap-2">
-                <p className="text-custom-gray-text text-base font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Upload Target Schema</p>
-                <p className="text-gray-500 text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or click to browse.</p>
-                {xsdFiles.length > 0 && <p className="text-sm text-custom-green-secondary">{xsdFiles.length} file(s)</p>}
-              </div>
-              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-gray-100 hover:bg-gray-200 text-custom-gray-text text-sm font-bold leading-normal tracking-[0.015em]">
-                <span className="truncate">Upload Schema</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-col space-y-4 p-2 mt-4">
-          <div className="flex items-center gap-4">
-            <div className="text-custom-green-cta flex items-center justify-center rounded-full bg-custom-green-cta/20 shrink-0 size-8">
-              <span className="material-symbols-outlined text-lg">check_circle</span>
-            </div>
-            <p className="text-custom-gray-text text-sm font-medium leading-normal flex-1 truncate">Uploading Complete</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-custom-green-cta flex items-center justify-center rounded-full bg-custom-green-cta/20 shrink-0 size-8">
-              <span className="material-symbols-outlined text-lg">check_circle</span>
-            </div>
-            <p className="text-custom-gray-text text-sm font-medium leading-normal flex-1 truncate">Analyzing Source &amp; Target</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center justify-center rounded-full shrink-0 size-8 ${progress < 100 ? 'text-custom-amber bg-custom-amber/20 animate-spin' : 'text-custom-green-cta bg-custom-green-cta/20'}`}>
-              <span className="material-symbols-outlined text-lg">{progress < 100 ? 'progress_activity' : 'check_circle'}</span>
-            </div>
-            <p className="text-custom-gray-text text-sm font-medium leading-normal flex-1 truncate">Mapping Fields ({progress}%)</p>
-          </div>
-          <div className={`flex items-center gap-4 ${progress < 100 ? 'opacity-50' : ''}`}>
-            <div className={`flex items-center justify-center rounded-full shrink-0 size-8 ${progress === 100 ? 'text-custom-green-cta bg-custom-green-cta/20' : 'text-gray-500 bg-gray-200'}`}>
-              <span className="material-symbols-outlined text-lg">{progress === 100 ? 'check_circle' : 'circle'}</span>
-            </div>
-            <p className={`text-sm font-medium leading-normal flex-1 truncate ${progress === 100 ? 'text-custom-gray-text' : 'text-gray-500'}`}>Ready for Review</p>
-          </div>
-        </div>
-      </aside>
+      <AIProgressPanel
+        xsdFiles={xsdFiles}
+        sourceFile={sourceFile}
+        aiProgress={aiProgress}
+      />
       <section className="flex-1 flex flex-col bg-custom-gray-bg overflow-hidden">
         <div className="p-6 border-b border-custom-gray-border flex flex-col gap-4">
           <div className="flex justify-between items-center gap-4">
@@ -348,24 +551,33 @@ function Screen2({ xsdFiles, sourceFile, progress, review, edits, setEdits, sele
         mapping={currentMapping}
         handleFinalize={handleFinalize}
         review={review}
+        aiProgress={aiProgress}
       />
     </>
   )
 }
 
-function DetailsPanel({ mapping, handleFinalize, review }) {
+function DetailsPanel({ mapping, handleFinalize, review, aiProgress }) {
   if (!mapping) return null
 
   const pct = Math.round((mapping.MatchScore||0)*100)
   const alternates = mapping.alternates || []
+  const isFinalizing = aiProgress.stage === 'finalizing'
+  const isComplete = aiProgress.stage === 'complete' && aiProgress.percentage === 100
 
   return (
     <aside className="w-[380px] shrink-0 border-l border-custom-gray-border bg-white flex flex-col">
       <div className="p-4 border-b border-custom-gray-border">
         <button
           onClick={handleFinalize}
-          className="w-full flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-custom-green-cta hover:bg-custom-green-secondary text-white text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50 disabled:cursor-not-allowed">
-          <span className="truncate">Finalize &amp; Download</span>
+          disabled={isFinalizing}
+          className="w-full flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-custom-green-cta hover:bg-custom-green-secondary text-white text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50 disabled:cursor-not-allowed gap-2">
+          {isFinalizing && (
+            <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+          )}
+          <span className="truncate">
+            {isFinalizing ? 'Generating Reports...' : isComplete ? 'Download Complete!' : 'Finalize & Download'}
+          </span>
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">
