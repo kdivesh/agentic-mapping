@@ -318,8 +318,12 @@ function AIProgressPanel({ xsdFiles, sourceFile, aiProgress }) {
     const ext = filename?.split('.').pop()?.toLowerCase()
     if (ext === 'csv') return 'table_chart'
     if (ext === 'xlsx' || ext === 'xls') return 'description'
-    if (ext === 'xsd' || ext === 'xml') return 'code'
     return 'insert_drive_file'
+  }
+
+  const isSchemaFile = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase()
+    return ext === 'xsd' || ext === 'xml'
   }
 
   const stages = [
@@ -337,16 +341,11 @@ function AIProgressPanel({ xsdFiles, sourceFile, aiProgress }) {
         <div className="flex flex-col p-2">
           <p className="text-custom-gray-text text-sm font-semibold mb-2 px-2">Source Dataset</p>
           {sourceFile ? (
-            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="material-symbols-outlined text-gray-600 text-xl shrink-0">
-                  {getFileIcon(sourceFile.name)}
-                </span>
-                <span className="text-sm text-custom-gray-text truncate">{sourceFile.name}</span>
-              </div>
-              <button className="text-gray-400 hover:text-red-500 transition-colors shrink-0">
-                <span className="material-symbols-outlined text-lg">delete</span>
-              </button>
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+              <span className="material-symbols-outlined text-gray-600 text-xl shrink-0">
+                {getFileIcon(sourceFile.name)}
+              </span>
+              <span className="text-sm text-custom-gray-text truncate">{sourceFile.name}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-6">
@@ -361,16 +360,15 @@ function AIProgressPanel({ xsdFiles, sourceFile, aiProgress }) {
           {xsdFiles.length > 0 ? (
             <div className="flex flex-col gap-2">
               {xsdFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                  {isSchemaFile(file.name) ? (
+                    <img src="/image.png" alt="schema" className="w-5 h-5 shrink-0" />
+                  ) : (
                     <span className="material-symbols-outlined text-gray-600 text-xl shrink-0">
                       {getFileIcon(file.name)}
                     </span>
-                    <span className="text-sm text-custom-gray-text truncate">{file.name}</span>
-                  </div>
-                  <button className="text-gray-400 hover:text-red-500 transition-colors shrink-0">
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                  </button>
+                  )}
+                  <span className="text-sm text-custom-gray-text truncate">{file.name}</span>
                 </div>
               ))}
             </div>
@@ -637,8 +635,8 @@ function DetailsPanel({ mapping, handleFinalize, review, aiProgress, onApplyAlte
                   </svg>
                 </span>
               </summary>
-              <div className="mt-3 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-custom-gray-border">
-                Based on semantic similarity of <code className="font-mono text-sm">{mapping.SourceField}</code> and <code className="font-mono text-sm">{mapping.TargetPath}</code>.
+              <div className="mt-3 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-custom-gray-border break-words">
+                Based on semantic similarity of <code className="font-mono text-sm break-all">{mapping.SourceField}</code> and <code className="font-mono text-sm break-all">{mapping.TargetPath}</code>.
               </div>
             </details>
             <div className="w-full h-px bg-gray-200"></div>
