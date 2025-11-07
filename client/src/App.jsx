@@ -314,6 +314,14 @@ function AIProgressPanel({ xsdFiles, sourceFile, aiProgress }) {
     return detail.status
   }
 
+  const getFileIcon = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase()
+    if (ext === 'csv') return 'table_chart'
+    if (ext === 'xlsx' || ext === 'xls') return 'description'
+    if (ext === 'xsd' || ext === 'xml') return 'code'
+    return 'insert_drive_file'
+  }
+
   const stages = [
     { name: 'File Parser', label: 'Uploading Complete' },
     { name: 'Schema Analyzer', label: 'Analyzing Source & Target' },
@@ -327,28 +335,51 @@ function AIProgressPanel({ xsdFiles, sourceFile, aiProgress }) {
 
       <div className="flex flex-col space-y-4">
         <div className="flex flex-col p-2">
-          <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-8">
-            <div className="flex max-w-[480px] flex-col items-center gap-2">
-              <p className="text-custom-gray-text text-base font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Upload Source Dataset</p>
-              <p className="text-gray-500 text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or click to browse.</p>
-              {sourceFile && <p className="text-sm text-custom-green-secondary truncate max-w-full">{sourceFile.name}</p>}
+          <p className="text-custom-gray-text text-sm font-semibold mb-2 px-2">Source Dataset</p>
+          {sourceFile ? (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="material-symbols-outlined text-gray-600 text-xl shrink-0">
+                  {getFileIcon(sourceFile.name)}
+                </span>
+                <span className="text-sm text-custom-gray-text truncate">{sourceFile.name}</span>
+              </div>
+              <button className="text-gray-400 hover:text-red-500 transition-colors shrink-0">
+                <span className="material-symbols-outlined text-lg">delete</span>
+              </button>
             </div>
-            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-gray-100 hover:bg-gray-200 text-custom-gray-text text-sm font-bold leading-normal tracking-[0.015em]">
-              <span className="truncate">Upload File</span>
-            </button>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-6">
+              <span className="material-symbols-outlined text-3xl text-gray-300">upload_file</span>
+              <p className="text-gray-500 text-xs text-center">No file uploaded</p>
+            </div>
+          )}
         </div>
+
         <div className="flex flex-col p-2">
-          <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-8">
-            <div className="flex max-w-[480px] flex-col items-center gap-2">
-              <p className="text-custom-gray-text text-base font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Upload Target Schema</p>
-              <p className="text-gray-500 text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or click to browse.</p>
-              {xsdFiles.length > 0 && <p className="text-sm text-custom-green-secondary">{xsdFiles.length} file(s)</p>}
+          <p className="text-custom-gray-text text-sm font-semibold mb-2 px-2">Target Schema</p>
+          {xsdFiles.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {xsdFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="material-symbols-outlined text-gray-600 text-xl shrink-0">
+                      {getFileIcon(file.name)}
+                    </span>
+                    <span className="text-sm text-custom-gray-text truncate">{file.name}</span>
+                  </div>
+                  <button className="text-gray-400 hover:text-red-500 transition-colors shrink-0">
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  </button>
+                </div>
+              ))}
             </div>
-            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-gray-100 hover:bg-gray-200 text-custom-gray-text text-sm font-bold leading-normal tracking-[0.015em]">
-              <span className="truncate">Upload Schema</span>
-            </button>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-6">
+              <span className="material-symbols-outlined text-3xl text-gray-300">upload_file</span>
+              <p className="text-gray-500 text-xs text-center">No files uploaded</p>
+            </div>
+          )}
         </div>
       </div>
 
