@@ -3,7 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBRE Mapping Studio — Agentic Preview</title>
+    <title>Agentic Data Mapping Studio</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#0fbd66",
+              "background-light": "#ffffff",
+              "background-dark": "#102219",
+              "custom-green-cta": "#00a651",
+              "custom-green-secondary": "#006a4d",
+              "custom-gray-bg": "#F8F9FA",
+              "custom-gray-border": "#E9ECEF",
+              "custom-gray-text": "#212529",
+              "custom-amber": "#FFBF00",
+              "custom-red": "#DC3545"
+            },
+            fontFamily: {
+              "display": ["Segoe UI", "sans-serif"]
+            },
+            borderRadius: {
+              "DEFAULT": "0.25rem",
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "full": "9999px"
+            },
+          },
+        },
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
