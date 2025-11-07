@@ -442,6 +442,10 @@ function Screen2({ xsdFiles, sourceFile, aiProgress, review, edits, setEdits, se
   const mappings = review?.mappings || []
   const currentMapping = selectedRow || (mappings.length > 0 ? mappings[0] : null)
 
+  const handleApplyAlternative = (sourceField, targetPath) => {
+    setEdits(prev => ({...prev, [sourceField]: targetPath}))
+  }
+
   return (
     <>
       <AIProgressPanel
@@ -552,18 +556,27 @@ function Screen2({ xsdFiles, sourceFile, aiProgress, review, edits, setEdits, se
         handleFinalize={handleFinalize}
         review={review}
         aiProgress={aiProgress}
+        onApplyAlternative={handleApplyAlternative}
       />
     </>
   )
 }
 
-function DetailsPanel({ mapping, handleFinalize, review, aiProgress }) {
+function DetailsPanel({ mapping, handleFinalize, review, aiProgress, onApplyAlternative }) {
   if (!mapping) return null
 
   const pct = Math.round((mapping.MatchScore||0)*100)
   const alternates = mapping.alternates || []
   const isFinalizing = aiProgress.stage === 'finalizing'
   const isComplete = aiProgress.stage === 'complete' && aiProgress.percentage === 100
+
+  const getConfidenceColor = (percentage) => {
+    if (percentage >= 80) return { text: 'text-green-600', bar: 'bg-green-500' }
+    if (percentage >= 60) return { text: 'text-yellow-600', bar: 'bg-yellow-500' }
+    return { text: 'text-red-600', bar: 'bg-red-500' }
+  }
+
+  const confidenceColors = getConfidenceColor(pct)
 
   return (
     <aside className="w-[380px] shrink-0 border-l border-custom-gray-border bg-white flex flex-col">
@@ -608,9 +621,9 @@ function DetailsPanel({ mapping, handleFinalize, review, aiProgress }) {
                 </span>
               </summary>
               <div className="mt-3 space-y-2">
-                <div className="text-4xl font-bold text-green-600">{pct}%</div>
+                <div className={`text-4xl font-bold ${confidenceColors.text}`}>{pct}%</div>
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${pct}%`}}></div>
+                  <div className={`${confidenceColors.bar} h-2.5 rounded-full transition-all`} style={{width: `${pct}%`}}></div>
                 </div>
               </div>
             </details>
@@ -629,9 +642,17 @@ function DetailsPanel({ mapping, handleFinalize, review, aiProgress }) {
                   const altPct = Math.round((alt.score||0)*100)
                   const altClass = altPct >= 80 ? 'bg-green-100 text-green-800' : altPct >= 60 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                   return (
-                    <li key={idx} className="p-3 rounded-lg hover:bg-gray-100 cursor-pointer border border-gray-200">
-                      <span className="font-mono text-sm text-custom-green-secondary">{alt.path}</span>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ml-2 ${altClass}`}>{altPct}%</span>
+                    <li key={idx} className="flex items-center justify-between gap-2 p-3 rounded-lg border border-gray-200 hover:border-custom-green-secondary transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-mono text-sm text-custom-green-secondary block truncate">{alt.path}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-1 ${altClass}`}>{altPct}%</span>
+                      </div>
+                      <button
+                        onClick={() => onApplyAlternative(mapping.SourceField, alt.path)}
+                        className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold bg-custom-green-cta hover:bg-custom-green-secondary text-white rounded-lg transition-colors shrink-0">
+                        <span className="material-symbols-outlined text-sm">check</span>
+                        Apply
+                      </button>
                     </li>
                   )
                 })}
